@@ -1,256 +1,874 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bingo Drakk's</title>
+  <link href="https://fonts.googleapis.com/css2?family=Bangers&family=Nunito:wght@400;700;900&display=swap" rel="stylesheet">
 
-<link href="https://fonts.googleapis.com/css2?family=Bangers&family=Nunito:wght@400;700;900&display=swap" rel="stylesheet">
-<style>
-#ba *{box-sizing:border-box;margin:0;padding:0;}
-#ba input{outline:none;transition:border-color 0.2s;}
-#ba input:focus{border-color:#ff3cac !important;}
-.ci:hover{transform:scale(1.04) translateY(-2px) !important;}
-@keyframes sd{from{background-position:0 0,30px 30px}to{background-position:60px 60px,90px 90px}}
-@keyframes ck{from{transform:scale(0) rotate(-20deg);opacity:0}to{transform:scale(1);opacity:0.85}}
-@media(max-width:600px){.ci{min-height:72px !important;}.ci div{font-size:8px !important;}}
-</style>
+  <!-- ================================================================
+       FIREBASE CONFIG — Remplace les valeurs ci-dessous par les tiennes
+       Console : https://console.firebase.google.com
+       Projet > Paramètres > Tes applications > SDK Firebase
+       ================================================================ -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
+    import { getDatabase, ref, set, get, update, onValue, push, remove }
+      from "https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js";
 
-<div id="ba" style="min-height:100vh;position:relative;background:#0f0c1d;font-family:'Nunito',sans-serif;color:#f0e6ff;overflow-x:hidden;">
+    const firebaseConfig = {
+      apiKey: "AIzaSyDh1QVNMIOlcHaWz6x2u8dacuMuRFUINyQ",
+      authDomain: "bingo-drakks.firebaseapp.com",
+      databaseURL: "https://bingo-drakks-default-rtdb.europe-west1.firebasedatabase.app",
+      projectId: "bingo-drakks",
+      storageBucket: "bingo-drakks.firebasestorage.app",
+      messagingSenderId: "1039474171005",
+      appId: "1:1039474171005:web:868b69c101fd9b1656e514",
+      measurementId: "G-XKQEJ6WE4N"
+    };
 
-  <div style="position:absolute;inset:0;background-image:radial-gradient(circle,rgba(255,255,255,0.12) 1px,transparent 1px),radial-gradient(circle,rgba(255,204,0,0.08) 1px,transparent 1px);background-size:60px 60px,100px 100px;animation:sd 30s linear infinite;pointer-events:none;z-index:0;"></div>
-  <div style="position:absolute;width:400px;height:400px;border-radius:50%;background:#ff3cac;filter:blur(90px);opacity:0.18;top:-120px;left:-120px;pointer-events:none;z-index:0;"></div>
-  <div style="position:absolute;width:350px;height:350px;border-radius:50%;background:#7b2fff;filter:blur(90px);opacity:0.18;bottom:-100px;right:-100px;pointer-events:none;z-index:0;"></div>
+    const app = initializeApp(firebaseConfig);
+    const db  = getDatabase(app);
 
-  <nav style="position:relative;z-index:10;background:rgba(15,12,29,0.93);border-bottom:1px solid rgba(255,60,172,0.2);padding:10px 16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-    <div style="font-family:'Bangers',cursive;font-size:24px;color:#ffcc00;letter-spacing:3px;text-shadow:0 0 12px rgba(255,204,0,0.6),2px 2px 0 #ff3cac;flex:1;min-width:130px;">BINGO DRAKK'S</div>
-    <button id="tj" onclick="SV('players')" style="font-family:'Bangers',cursive;font-size:14px;letter-spacing:2px;background:rgba(255,60,172,0.3);border:1.5px solid #ff3cac;color:#f0e6ff;border-radius:8px;padding:5px 14px;cursor:pointer;">JOUEURS</button>
-    <button id="tl" onclick="SV('leaderboard')" style="font-family:'Bangers',cursive;font-size:14px;letter-spacing:2px;background:transparent;border:1.5px solid rgba(255,60,172,0.35);color:#f0e6ff;border-radius:8px;padding:5px 14px;cursor:pointer;">CLASSEMENT</button>
-    <button onclick="refresh()" title="Actualiser" style="font-family:'Bangers',cursive;font-size:14px;background:transparent;border:1.5px solid rgba(0,245,212,0.35);color:#00f5d4;border-radius:8px;padding:5px 10px;cursor:pointer;">↺</button>
+    /* ── Expose DB helpers on window so the non-module script can use them ── */
+    window._db = db;
+    window._ref    = ref;
+    window._set    = set;
+    window._get    = get;
+    window._update = update;
+    window._onValue= onValue;
+    window._push   = push;
+    window._remove = remove;
+    window._dbReady = true;
+    document.dispatchEvent(new Event("dbReady"));
+  </script>
+
+  <style>
+    :root {
+      --bg:        #0f0c1d;
+      --card-bg:   #1a1533;
+      --a1:        #ff3cac;
+      --a2:        #ffcc00;
+      --a3:        #00f5d4;
+      --a4:        #7b2fff;
+      --text:      #f0e6ff;
+      --border:    rgba(255,60,172,0.30);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      font-family: 'Nunito', sans-serif;
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ── Starfield ── */
+    body::before {
+      content: '';
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background-image:
+        radial-gradient(circle, rgba(255,255,255,.13) 1px, transparent 1px),
+        radial-gradient(circle, rgba(255,204,0,.09)  1px, transparent 1px);
+      background-size: 60px 60px, 100px 100px;
+      background-position: 0 0, 30px 30px;
+      animation: drift 30s linear infinite;
+    }
+    @keyframes drift {
+      to { background-position: 60px 60px, 90px 90px; }
+    }
+
+    /* ── Blobs ── */
+    .blob {
+      position: fixed; border-radius: 50%;
+      filter: blur(80px); opacity: .2;
+      pointer-events: none; z-index: 0;
+    }
+    .b1 { width:400px;height:400px;background:var(--a1);top:-110px;left:-110px;animation:pulse 8s ease-in-out infinite alternate; }
+    .b2 { width:350px;height:350px;background:var(--a4);bottom:-90px;right:-90px;animation:pulse 10s ease-in-out infinite alternate-reverse; }
+    .b3 { width:250px;height:250px;background:var(--a3);top:50%;left:50%;transform:translate(-50%,-50%);animation:pulse 12s ease-in-out infinite alternate; }
+    @keyframes pulse { to { transform: scale(1.18); } }
+
+    /* ── Nav ── */
+    nav {
+      position: relative; z-index: 20;
+      background: rgba(15,12,29,.95);
+      border-bottom: 1px solid var(--border);
+      padding: 10px 18px;
+      display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    }
+    .logo {
+      font-family: 'Bangers', cursive;
+      font-size: 26px; letter-spacing: 3px;
+      color: var(--a2);
+      text-shadow: 0 0 14px rgba(255,204,0,.6), 2px 2px 0 var(--a1);
+      flex: 1; min-width: 130px;
+    }
+    .tab-btn {
+      font-family: 'Bangers', cursive;
+      font-size: 15px; letter-spacing: 2px;
+      background: transparent;
+      border: 1.5px solid var(--border);
+      color: var(--text);
+      border-radius: 8px; padding: 6px 16px;
+      cursor: pointer; transition: background .2s, border-color .2s;
+    }
+    .tab-btn.active {
+      background: rgba(255,60,172,.28);
+      border-color: var(--a1);
+    }
+    .tab-btn:hover { background: rgba(255,60,172,.15); }
+
+    .sync-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--a3);
+      box-shadow: 0 0 8px var(--a3);
+      animation: blink 2s ease-in-out infinite;
+    }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.25} }
+    .sync-dot.off { background: #ff4444; box-shadow: 0 0 8px #ff4444; animation: none; }
+
+    /* ── Main wrapper ── */
+    #main {
+      position: relative; z-index: 1;
+      max-width: 960px; margin: 0 auto;
+      padding: 26px 14px 60px;
+    }
+
+    /* ── Config screen ── */
+    #cfg-screen {
+      display: none;
+      position: fixed; inset: 0; z-index: 200;
+      background: rgba(10,8,20,.97);
+      align-items: center; justify-content: center;
+      padding: 20px;
+    }
+    #cfg-screen.show { display: flex; }
+    .cfg-box {
+      background: var(--card-bg);
+      border: 1.5px solid var(--border);
+      border-radius: 18px; padding: 32px 28px;
+      max-width: 480px; width: 100%;
+      text-align: center;
+    }
+    .cfg-box h2 {
+      font-family: 'Bangers', cursive;
+      font-size: 36px; color: var(--a2);
+      text-shadow: 0 0 14px rgba(255,204,0,.5);
+      letter-spacing: 4px; margin-bottom: 10px;
+    }
+    .cfg-box p {
+      font-size: 13px; color: rgba(240,230,255,.6);
+      margin-bottom: 20px; line-height: 1.6;
+    }
+    .cfg-box a { color: var(--a3); }
+    .cfg-box code {
+      display: block;
+      background: rgba(0,0,0,.5);
+      border-radius: 8px; padding: 12px 14px;
+      font-size: 11px; text-align: left;
+      color: #aef6e0; margin-bottom: 20px;
+      white-space: pre-wrap; word-break: break-all;
+    }
+
+    /* ── Cards grid (players list) ── */
+    .players-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(155px, 1fr));
+      gap: 12px;
+    }
+    .player-card {
+      background: rgba(26,21,51,.85);
+      border: 1.5px solid var(--border);
+      border-radius: 14px; padding: 18px 12px;
+      cursor: pointer; text-align: center;
+      transition: transform .15s, box-shadow .15s;
+    }
+    .player-card:hover {
+      transform: scale(1.045);
+      box-shadow: 0 6px 24px rgba(255,60,172,.32);
+      border-color: var(--a1);
+    }
+    .avatar {
+      font-family: 'Bangers', cursive;
+      font-size: 40px; color: var(--a4);
+      text-shadow: 0 0 14px rgba(123,47,255,.55);
+      margin-bottom: 5px;
+    }
+    .player-name { font-weight: 900; font-size: 13px; word-break: break-word; margin-bottom: 8px; }
+    .player-score { font-family: 'Bangers', cursive; font-size: 22px; color: var(--a3); letter-spacing: 2px; }
+    .progress-bar {
+      margin-top: 7px; height: 4px;
+      background: rgba(255,255,255,.1);
+      border-radius: 2px; overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--a1), var(--a4));
+      border-radius: 2px;
+      transition: width .4s;
+    }
+
+    /* ── Search + add bar ── */
+    .top-bar {
+      display: flex; gap: 10px; align-items: center;
+      margin-bottom: 22px; flex-wrap: wrap;
+    }
+    .search-input {
+      flex: 1; min-width: 160px;
+      padding: 10px 14px;
+      border-radius: 10px;
+      border: 1.5px solid var(--border);
+      background: rgba(26,21,51,.9);
+      color: var(--text);
+      font-family: 'Nunito', sans-serif;
+      font-size: 14px; font-weight: 700;
+      outline: none; transition: border-color .2s;
+    }
+    .search-input:focus { border-color: var(--a1); }
+    .btn-add {
+      font-family: 'Bangers', cursive;
+      font-size: 16px; letter-spacing: 2px;
+      background: var(--a1); border: none;
+      color: #0f0c1d; border-radius: 10px;
+      padding: 10px 22px; cursor: pointer;
+      box-shadow: 0 4px 14px rgba(255,60,172,.4);
+      white-space: nowrap; transition: transform .1s, box-shadow .1s;
+    }
+    .btn-add:hover { transform: scale(1.05); box-shadow: 0 6px 18px rgba(255,60,172,.55); }
+
+    /* ── Modal ── */
+    .modal-overlay {
+      display: none; position: fixed; inset: 0; z-index: 80;
+      background: rgba(0,0,0,.78);
+      align-items: flex-start; justify-content: center;
+      padding: 80px 20px 40px;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal-box {
+      background: var(--card-bg);
+      border: 1.5px solid rgba(255,60,172,.55);
+      border-radius: 16px; padding: 30px 26px;
+      width: 100%; max-width: 380px; text-align: center;
+    }
+    .modal-box h2 {
+      font-family: 'Bangers', cursive; font-size: 34px;
+      color: var(--a2); letter-spacing: 4px; margin-bottom: 18px;
+      text-shadow: 0 0 12px rgba(255,204,0,.5);
+    }
+    .modal-input {
+      width: 100%; padding: 11px 14px;
+      border-radius: 8px;
+      border: 1.5px solid var(--border);
+      background: rgba(15,12,29,.9);
+      color: var(--text);
+      font-family: 'Nunito', sans-serif;
+      font-size: 15px; font-weight: 700;
+      display: block; margin-bottom: 14px; outline: none;
+      transition: border-color .2s;
+    }
+    .modal-input:focus { border-color: var(--a1); }
+    .modal-actions { display: flex; gap: 10px; justify-content: center; }
+    .btn-cancel {
+      font-family: 'Bangers', cursive; font-size: 16px; letter-spacing: 1px;
+      background: transparent; border: 1.5px solid var(--border);
+      color: var(--text); border-radius: 8px;
+      padding: 7px 18px; cursor: pointer; transition: background .15s;
+    }
+    .btn-cancel:hover { background: rgba(255,255,255,.07); }
+    .btn-confirm {
+      font-family: 'Bangers', cursive; font-size: 16px; letter-spacing: 1px;
+      background: var(--a1); border: none; color: #0f0c1d;
+      border-radius: 8px; padding: 7px 22px; cursor: pointer;
+      box-shadow: 0 4px 14px rgba(255,60,172,.4); transition: transform .1s;
+    }
+    .btn-confirm:hover { transform: scale(1.04); }
+
+    /* ── Bingo grid ── */
+    .page-title {
+      text-align: center; margin-bottom: 18px;
+    }
+    .page-title h1 {
+      font-family: 'Bangers', cursive;
+      font-size: clamp(36px, 9vw, 76px);
+      color: var(--a2); letter-spacing: 4px; line-height: 1;
+      text-shadow: 0 0 16px rgba(255,204,0,.7), 3px 3px 0 var(--a1), 6px 6px 0 var(--a4);
+    }
+    .page-subtitle {
+      font-weight: 900; font-size: 11px; color: var(--a3);
+      letter-spacing: 6px; text-transform: uppercase; margin-top: 4px;
+      text-shadow: 0 0 10px var(--a3);
+    }
+
+    .bingo-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 6px; padding: 14px;
+      background: rgba(255,255,255,.025);
+      border-radius: 18px; border: 1.5px solid var(--border);
+      box-shadow: 0 0 40px rgba(255,60,172,.18), inset 0 0 30px rgba(0,0,0,.25);
+    }
+
+    .cell {
+      border: 1.5px solid var(--border);
+      border-radius: 11px; padding: 8px 5px;
+      display: flex; align-items: center; justify-content: center;
+      text-align: center; cursor: pointer;
+      min-height: 100px; position: relative; overflow: hidden;
+      background: rgba(26,21,51,.85);
+      transition: transform .14s, box-shadow .14s, background .18s;
+    }
+    .cell:hover {
+      transform: scale(1.04) translateY(-2px);
+      box-shadow: 0 6px 22px rgba(255,60,172,.35);
+      border-color: var(--a1);
+      background: rgba(40,30,70,.95);
+      z-index: 2;
+    }
+    .cell.done {
+      background: linear-gradient(135deg, rgba(255,60,172,.28), rgba(123,47,255,.36));
+      border-color: var(--a1);
+      box-shadow: 0 0 18px rgba(255,60,172,.42);
+    }
+    .cell.done .cell-text { opacity: .45; text-decoration: line-through; }
+    .cell.done::after {
+      content: '✓';
+      position: absolute; font-size: 42px;
+      color: var(--a2); font-family: 'Bangers', cursive;
+      text-shadow: 0 0 14px var(--a2); opacity: .88;
+      animation: checkPop .3s cubic-bezier(.3,1.5,.5,1) both;
+    }
+    @keyframes checkPop {
+      from { transform: scale(0) rotate(-20deg); opacity: 0; }
+      to   { transform: scale(1) rotate(0deg); opacity: .88; }
+    }
+    .cell-num {
+      position: absolute; top: 4px; left: 6px;
+      font-family: 'Bangers', cursive; font-size: 10px;
+      color: rgba(255,204,0,.35);
+    }
+    .cell-text {
+      font-weight: 700; font-size: clamp(8px, 1vw, 11px);
+      color: var(--text); line-height: 1.3;
+      position: relative; z-index: 1;
+    }
+    .bonus-badge {
+      display: inline-block; font-size: 7px; font-weight: 900;
+      text-transform: uppercase; letter-spacing: 1px;
+      color: #0f0c1d; background: var(--a2);
+      border-radius: 3px; padding: 1px 3px; margin-top: 3px;
+    }
+
+    /* ── Bottom bar (bingo view) ── */
+    .bottom-bar {
+      display: flex; align-items: center; gap: 18px;
+      justify-content: center; margin-top: 16px; flex-wrap: wrap;
+    }
+    .counter {
+      font-family: 'Bangers', cursive; font-size: 26px;
+      color: var(--a3); letter-spacing: 3px;
+      text-shadow: 0 0 10px var(--a3);
+    }
+    .btn-reset {
+      font-family: 'Bangers', cursive; font-size: 16px; letter-spacing: 2px;
+      color: #0f0c1d; background: var(--a1); border: none;
+      border-radius: 8px; padding: 8px 22px; cursor: pointer;
+      box-shadow: 0 4px 13px rgba(255,60,172,.4);
+      transition: transform .1s, box-shadow .1s;
+    }
+    .btn-reset:hover { transform: scale(1.05); box-shadow: 0 6px 18px rgba(255,60,172,.55); }
+    .btn-delete {
+      font-family: 'Bangers', cursive; font-size: 16px; letter-spacing: 2px;
+      color: #0f0c1d; background: #ff4444; border: none;
+      border-radius: 8px; padding: 8px 22px; cursor: pointer;
+      box-shadow: 0 4px 13px rgba(255,60,60,.4);
+      transition: transform .1s;
+    }
+    .btn-delete:hover { transform: scale(1.05); }
+    .btn-back {
+      font-family: 'Bangers', cursive; font-size: 13px; letter-spacing: 2px;
+      background: transparent; border: 1.5px solid var(--border);
+      color: var(--text); border-radius: 8px; padding: 5px 13px;
+      cursor: pointer; margin-bottom: 12px; display: block; margin-left: auto; margin-right: auto;
+      transition: background .15s;
+    }
+    .btn-back:hover { background: rgba(255,255,255,.07); }
+
+    /* ── Bingo flash ── */
+    #bingo-flash {
+      position: fixed; inset: 0; z-index: 300;
+      display: flex; align-items: center; justify-content: center;
+      pointer-events: none; opacity: 0;
+      transition: opacity .4s;
+    }
+    #bingo-flash.show { opacity: 1; }
+    .bingo-text {
+      font-family: 'Bangers', cursive;
+      font-size: clamp(80px, 18vw, 180px);
+      color: var(--a2); letter-spacing: 10px;
+      text-shadow: 0 0 30px rgba(255,204,0,.9), 6px 6px 0 var(--a1), 12px 12px 0 var(--a4);
+      animation: bounceIn .5s cubic-bezier(.3,1.5,.5,1) both;
+    }
+    @keyframes bounceIn {
+      from { transform: scale(0) rotate(-10deg); }
+      to   { transform: scale(1) rotate(0deg); }
+    }
+
+    /* ── Leaderboard ── */
+    .lb-row {
+      background: rgba(26,21,51,.85);
+      border: 1.5px solid var(--border);
+      border-radius: 13px; padding: 14px 18px;
+      display: flex; align-items: center; gap: 14px;
+      cursor: pointer;
+      transition: transform .15s, border-color .15s;
+    }
+    .lb-row:hover { transform: translateX(6px); border-color: var(--a1); }
+    .lb-rank {
+      font-family: 'Bangers', cursive; font-size: 30px;
+      min-width: 44px; text-align: center;
+    }
+    .lb-info { flex: 1; }
+    .lb-name  { font-weight: 900; font-size: 15px; }
+    .lb-sub   { font-size: 11px; color: rgba(240,230,255,.45); margin-top: 2px; }
+    .lb-score { font-family: 'Bangers', cursive; font-size: 26px; color: var(--a3); letter-spacing: 2px; text-align: right; }
+
+    /* ── Empty state ── */
+    .empty { text-align: center; padding: 70px 20px; color: rgba(240,230,255,.32); }
+    .empty-icon { font-size: 56px; margin-bottom: 14px; }
+    .empty p { font-size: 14px; }
+
+    /* ── Toast ── */
+    #toast {
+      position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%) translateY(80px);
+      background: rgba(26,21,51,.96); border: 1.5px solid var(--a3);
+      border-radius: 10px; padding: 10px 22px;
+      font-weight: 700; font-size: 14px; color: var(--a3);
+      z-index: 400; transition: transform .35s cubic-bezier(.3,1.3,.5,1);
+      box-shadow: 0 0 20px rgba(0,245,212,.25);
+      white-space: nowrap;
+    }
+    #toast.show { transform: translateX(-50%) translateY(0); }
+
+    @media (max-width: 600px) {
+      .cell { min-height: 76px; }
+      .cell-text { font-size: 8px; }
+      .bingo-grid { gap: 4px; padding: 9px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Déco -->
+  <div class="blob b1"></div>
+  <div class="blob b2"></div>
+  <div class="blob b3"></div>
+
+  <!-- Firebase non configuré -->
+  <div id="cfg-screen">
+    <div class="cfg-box">
+      <h2>CONFIG FIREBASE</h2>
+      <p>Pour que le bingo soit partagé entre plusieurs PC en temps réel,<br>
+         tu dois configurer Firebase (gratuit, ~5 min).</p>
+      <p style="margin-bottom:10px;">
+        1. Va sur <a href="https://console.firebase.google.com" target="_blank">console.firebase.google.com</a><br>
+        2. Crée un projet → Realtime Database → mode test<br>
+        3. Projet > Paramètres > Tes applications → copie ta config<br>
+        4. Ouvre ce fichier HTML dans un éditeur et remplace les <code style="display:inline;background:transparent;color:#ff3cac;padding:0;font-size:inherit;">REMPLACE_MOI</code> dans la section <code style="display:inline;background:transparent;color:#ff3cac;padding:0;font-size:inherit;">firebaseConfig</code>
+      </p>
+      <code>const firebaseConfig = {
+  apiKey:            "...",
+  authDomain:        "...",
+  databaseURL:       "...",
+  projectId:         "...",
+  storageBucket:     "...",
+  messagingSenderId: "...",
+  appId:             "..."
+};</code>
+      <p>Une fois fait, recharge la page.</p>
+    </div>
+  </div>
+
+  <!-- Nav -->
+  <nav>
+    <div class="logo">BINGO DRAKK'S</div>
+    <button class="tab-btn active" id="btn-players"  onclick="showView('players')">JOUEURS</button>
+    <button class="tab-btn"        id="btn-leaderboard" onclick="showView('leaderboard')">CLASSEMENT</button>
+    <div class="sync-dot off" id="sync-dot" title="Connexion Firebase"></div>
   </nav>
 
-  <div id="mn" style="position:relative;z-index:1;max-width:960px;margin:0 auto;padding:22px 14px 48px;"></div>
+  <!-- Main -->
+  <div id="main"></div>
 
-  <div id="aov" style="display:none;position:absolute;inset:0;z-index:50;min-height:100%;background:rgba(0,0,0,0.78);align-items:flex-start;justify-content:center;padding:80px 20px 40px;">
-    <div style="background:#1a1533;border:1.5px solid rgba(255,60,172,0.55);border-radius:16px;padding:28px 24px;width:100%;max-width:380px;text-align:center;">
-      <h2 style="font-family:'Bangers',cursive;font-size:34px;color:#ffcc00;letter-spacing:4px;margin-bottom:18px;text-shadow:0 0 12px rgba(255,204,0,0.5);">NOUVEAU JOUEUR</h2>
-      <input id="pni" type="text" placeholder="Pseudo du joueur..." maxlength="30" style="width:100%;padding:11px 14px;border-radius:8px;border:1.5px solid rgba(255,60,172,0.35);background:rgba(15,12,29,0.9);color:#f0e6ff;font-family:'Nunito',sans-serif;font-size:15px;font-weight:700;display:block;margin-bottom:14px;">
-      <div style="display:flex;gap:10px;justify-content:center;">
-        <button onclick="cOv()" style="font-family:'Bangers',cursive;font-size:16px;letter-spacing:1px;background:transparent;border:1.5px solid rgba(255,60,172,0.35);color:#f0e6ff;border-radius:8px;padding:7px 18px;cursor:pointer;">ANNULER</button>
-        <button onclick="aP()" style="font-family:'Bangers',cursive;font-size:16px;letter-spacing:1px;background:#ff3cac;border:none;color:#0f0c1d;border-radius:8px;padding:7px 18px;cursor:pointer;box-shadow:0 4px 14px rgba(255,60,172,0.4);">AJOUTER !</button>
+  <!-- Modal ajout joueur -->
+  <div class="modal-overlay" id="modal">
+    <div class="modal-box">
+      <h2>NOUVEAU JOUEUR</h2>
+      <input class="modal-input" id="new-player-firstname" type="text"
+             placeholder="Prénom..." maxlength="30">
+      <input class="modal-input" id="new-player-lastname" type="text"
+             placeholder="Nom..." maxlength="30">
+      <div class="modal-actions">
+        <button class="btn-cancel"  onclick="closeModal()">ANNULER</button>
+        <button class="btn-confirm" onclick="addPlayer()">AJOUTER !</button>
       </div>
     </div>
   </div>
 
-  <div id="bf" style="position:absolute;inset:0;z-index:100;min-height:100%;display:flex;align-items:flex-start;justify-content:center;padding-top:30vh;pointer-events:none;opacity:0;transition:opacity 0.4s;">
-    <div style="font-family:'Bangers',cursive;font-size:clamp(72px,16vw,160px);color:#ffcc00;text-shadow:0 0 30px rgba(255,204,0,0.9),6px 6px 0 #ff3cac,12px 12px 0 #7b2fff;letter-spacing:8px;">BINGO!</div>
-  </div>
-</div>
+  <!-- Bingo flash -->
+  <div id="bingo-flash"><div class="bingo-text">BINGO!</div></div>
+
+  <!-- Toast -->
+  <div id="toast"></div>
 
 <script>
-const MS=[
-  {t:"Devinez le nbr de rattrapés RSE",b:null},
-  {t:"Faire une story \"Venez torch'tot Drakk's\" et nous mentionner",b:null},
-  {t:"Piéger Youri sur un tour de magie",b:null},
-  {t:"Trouver 10 utilisations possibles d'Hercule (à poster sur Sans Trash)",b:null},
-  {t:"Faire une PUB pour nous au CLAP",b:null},
-  {t:"Se faire maquiller au stand",b:null},
-  {t:"Faire goûter son repas torch'tot à Quentin",b:null},
-  {t:"Faire la vague devant les barrières de EH",b:null},
-  {t:"Faire la trend nian ichi ni san avec les oreilles / queue de chat de Claire",b:null},
-  {t:"Venir avec le Dresscode et faire une photo avec qqn de l'autre couleur",b:null},
-  {t:"Parler à Hana / Kanoko en japonais",b:null},
-  {t:"Offrir à Gaël un dessin de Claire qu'il juge reconnaissable",b:null},
-  {t:"Demander à Karl son top 3 Yuri",b:null},
-  {t:"Apporter un chou à la crème à Heiva",b:null},
-  {t:"Lécher le coude de William",b:null},
-  {t:"Poster une story baptême Hercule",b:null},
-  {t:"Faire le loup avec Léia",b:null},
-  {t:"Faire une formation tortue",b:null},
-  {t:"Apporter un plateau crous à Paul",b:null},
-  {t:"Demander à Claire l'origine de son surnom",b:null},
-  {t:"Convaincre EH de passer sa musique et faire la chorée",b:null},
-  {t:"Ramener un daron à la soirée",b:"Bonus si JF !"},
-  {t:"Trouver un sosie de Mathys",b:"Bonus si acteur X"},
-  {t:"Ramener une fleur à Charlotte",b:"Bonus si déclaration enflammée"},
-  {t:"Faire la cérémonie de mariage entre Heiva et Hercule",b:null},
+/* ════════════════════════════════════════════════════
+   MISSIONS
+   ════════════════════════════════════════════════════ */
+const MISSIONS = [
+  { t:"Devinez le nbr de rattrapés RSE", b:null },
+  { t:"Faire une story \"Venez torch'tot Drakk's\" et nous mentionner", b:null },
+  { t:"Piéger Youri sur un tour de magie", b:null },
+  { t:"Trouver 10 utilisations possibles d'Hercule (à poster sur Sans Trash)", b:null },
+  { t:"Faire une PUB pour nous au CLAP", b:null },
+  { t:"Se faire maquiller au stand", b:null },
+  { t:"Faire goûter son repas torch'tot à Quentin", b:null },
+  { t:"Faire la vague devant les barrières de EH", b:null },
+  { t:"Faire la trend nian ichi ni san avec les oreilles / queue de chat de Claire", b:null },
+  { t:"Venir avec le Dresscode et faire une photo avec qqn de l'autre couleur", b:null },
+  { t:"Parler à Hana / Kanoko en japonais", b:null },
+  { t:"Offrir à Gaël un dessin de Claire qu'il juge reconnaissable", b:null },
+  { t:"Demander à Karl son top 3 Yuri", b:null },
+  { t:"Apporter un chou à la crème à Heiva", b:null },
+  { t:"Lécher le coude de William", b:null },
+  { t:"Poster une story baptême Hercule", b:null },
+  { t:"Faire le loup avec Léia", b:null },
+  { t:"Faire une formation tortue", b:null },
+  { t:"Apporter un plateau crous à Paul", b:null },
+  { t:"Demander à Claire l'origine de son surnom", b:null },
+  { t:"Convaincre EH de passer sa musique et faire la chorée", b:null },
+  { t:"Ramener un daron à la soirée", b:"Bonus si JF !" },
+  { t:"Trouver un sosie de Mathys", b:"Bonus si acteur X 🎬" },
+  { t:"Ramener une fleur à Charlotte", b:"Bonus si déclaration enflammée 💘" },
+  { t:"Faire la cérémonie de mariage entre Heiva et Hercule 💍", b:null },
 ];
-const LINES=[[0,1,2,3,4],[5,6,7,8,9],[10,11,12,13,14],[15,16,17,18,19],[20,21,22,23,24],[0,5,10,15,20],[1,6,11,16,21],[2,7,12,17,22],[3,8,13,18,23],[4,9,14,19,24],[0,6,12,18,24],[4,8,12,16,20]];
-function sh(a){const r=[...a];for(let i=r.length-1;i>0;i--){const j=0|Math.random()*(i+1);[r[i],r[j]]=[r[j],r[i]];}return r;}
-function es(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
-function ini(n){return n.trim().split(/\s+/).map(w=>w[0]||'').join('').toUpperCase().slice(0,2)||'?';}
-async function gs(k){try{const r=await window.storage.get(k,true);return r?JSON.parse(r.value):null;}catch{return null;}}
-async function ss(k,v){try{await window.storage.set(k,JSON.stringify(v),true);}catch(e){console.error(e);}}
 
-let vw='l',Ps=[],cP=null,cS=null,q='';
+const BINGO_LINES = [
+  [0,1,2,3,4],[5,6,7,8,9],[10,11,12,13,14],[15,16,17,18,19],[20,21,22,23,24],
+  [0,5,10,15,20],[1,6,11,16,21],[2,7,12,17,22],[3,8,13,18,23],[4,9,14,19,24],
+  [0,6,12,18,24],[4,8,12,16,20]
+];
 
-async function init(){Ps=(await gs('bdp'))||[];SV('players');}
+/* ════════════════════════════════════════════════════
+   STATE
+   ════════════════════════════════════════════════════ */
+let view = 'players';
+let players = {};          // { id: { name, order[], checked[], milestones{} } }
+let currentPlayerId = null;
+let searchQ = '';
+let unsubscribe = null;    // Firebase listener teardown
 
-function tabs(v){
-  ['j','l'].forEach(t=>{
-    const a=(t==='j'&&v==='players')||(t==='l'&&v==='leaderboard');
-    const b=document.getElementById('t'+t);
-    b.style.background=a?'rgba(255,60,172,0.3)':'transparent';
-    b.style.borderColor=a?'#ff3cac':'rgba(255,60,172,0.35)';
+/* ════════════════════════════════════════════════════
+   HELPERS
+   ════════════════════════════════════════════════════ */
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = 0|Math.random()*(i+1);
+    [a[i],a[j]] = [a[j],a[i]];
+  }
+  return a;
+}
+function initials(name) {
+  return name.trim().split(/\s+/).map(w => w[0]||'').join('').toUpperCase().slice(0,2) || '?';
+}
+function esc(s) {
+  return String(s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 2200);
+}
+function triggerBingo() {
+  const f = document.getElementById('bingo-flash');
+  f.classList.add('show');
+  setTimeout(() => f.classList.remove('show'), 2600);
+}
+
+/* ════════════════════════════════════════════════════
+   FIREBASE — wiring
+   ════════════════════════════════════════════════════ */
+function waitDb(cb) {
+  if (window._dbReady) { cb(); return; }
+  document.addEventListener('dbReady', cb, { once: true });
+}
+
+function listenPlayers() {
+  if (unsubscribe) unsubscribe();
+  const r = window._ref(window._db, 'players');
+  unsubscribe = window._onValue(r, snap => {
+    players = snap.val() || {};
+    document.getElementById('sync-dot').classList.remove('off');
+    if (view === 'players')     renderPlayers();
+    if (view === 'leaderboard') renderLeaderboard();
+    if (view === 'bingo' && currentPlayerId) renderBingo();
+  }, () => {
+    document.getElementById('sync-dot').classList.add('off');
   });
 }
 
-window.SV=async function(v){
-  vw=v;tabs(v);
-  if(v==='players'){rP();}
-  else if(v==='bingo'){rB();}
-  else if(v==='leaderboard'){await rL();}
-};
-
-window.refresh=async function(){
-  Ps=(await gs('bdp'))||[];
-  if(vw==='players')rP();
-  else if(vw==='leaderboard')await rL();
-  else if(vw==='bingo'&&cP){
-    const fs=await gs('bs_'+cP.id);
-    if(fs){cS=fs;cP.c=fs.checked.filter(Boolean).length;}
-    rB();
-  }
-};
-
-function rP(){
-  const f=Ps.filter(p=>p.n.toLowerCase().includes(q.toLowerCase()));
-  document.getElementById('mn').innerHTML=`
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:22px;flex-wrap:wrap;">
-      <input type="text" placeholder="Rechercher un joueur..." value="${es(q)}" oninput="qF(this.value)"
-        style="flex:1;min-width:160px;padding:10px 14px;border-radius:10px;border:1.5px solid rgba(255,60,172,0.3);background:rgba(26,21,51,0.9);color:#f0e6ff;font-family:'Nunito',sans-serif;font-size:14px;font-weight:700;">
-      <button onclick="oOv()" style="font-family:'Bangers',cursive;font-size:16px;letter-spacing:2px;background:#ff3cac;border:none;color:#0f0c1d;border-radius:10px;padding:9px 20px;cursor:pointer;white-space:nowrap;box-shadow:0 4px 14px rgba(255,60,172,0.4);">+ JOUEUR</button>
-    </div>
-    ${f.length===0?`<div style="text-align:center;padding:60px 20px;color:rgba(240,230,255,0.35);">
-      <div style="font-family:'Bangers',cursive;font-size:52px;margin-bottom:12px;">${Ps.length===0?'👾':'🔍'}</div>
-      <div style="font-size:14px;">${Ps.length===0?'Aucun joueur encore — ajoute le premier !':'Aucun résultat pour "'+es(q)+'"'}</div>
-    </div>`:
-    `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:11px;">
-      ${f.map(p=>`<div onclick="oP('${p.id}')"
-        style="background:rgba(26,21,51,0.85);border:1.5px solid rgba(255,60,172,0.28);border-radius:14px;padding:18px 12px;cursor:pointer;text-align:center;transition:transform 0.15s,box-shadow 0.15s;"
-        onmouseenter="this.style.transform='scale(1.04)';this.style.boxShadow='0 6px 22px rgba(255,60,172,0.3)'"
-        onmouseleave="this.style.transform='';this.style.boxShadow=''">
-        <div style="font-family:'Bangers',cursive;font-size:38px;color:#7b2fff;text-shadow:0 0 12px rgba(123,47,255,0.55);margin-bottom:4px;">${ini(p.n)}</div>
-        <div style="font-weight:900;font-size:13px;color:#f0e6ff;margin-bottom:8px;word-break:break-word;">${es(p.n)}</div>
-        <div style="font-family:'Bangers',cursive;font-size:20px;color:#00f5d4;letter-spacing:2px;">${p.c||0}/25</div>
-        <div style="margin-top:7px;height:4px;background:rgba(255,255,255,0.1);border-radius:2px;overflow:hidden;">
-          <div style="height:100%;width:${Math.round(((p.c||0)/25)*100)}%;background:linear-gradient(90deg,#ff3cac,#7b2fff);border-radius:2px;"></div>
-        </div>
-      </div>`).join('')}
-    </div>`}
-  `;
+async function savePlayer(id, data) {
+  await window._set(window._ref(window._db, `players/${id}`), data);
 }
 
-window.qF=function(v){q=v;rP();};
-window.oOv=function(){document.getElementById('aov').style.display='flex';setTimeout(()=>document.getElementById('pni').focus(),50);};
-window.cOv=function(){document.getElementById('aov').style.display='none';document.getElementById('pni').value='';};
-window.aP=async function(){
-  const n=document.getElementById('pni').value.trim();
-  if(!n)return;
-  const id='p'+Date.now();
-  const p={id,n,createdAt:Date.now(),order:sh([...Array(25).keys()]),c:0};
-  Ps.push(p);
-  await ss('bdp',Ps);
-  cOv();
-  rP();
-};
-window.oP=async function(id){
-  cP=Ps.find(p=>p.id===id);
-  if(!cP)return;
-  cS=(await gs('bs_'+cP.id))||{checked:new Array(25).fill(false),ms:{}};
-  SV('bingo');
+/* ════════════════════════════════════════════════════
+   VIEWS
+   ════════════════════════════════════════════════════ */
+window.showView = function(v) {
+  view = v;
+  ['players','leaderboard'].forEach(t => {
+    const btn = document.getElementById('btn-'+t);
+    btn.classList.toggle('active', t === v);
+  });
+  currentPlayerId = null;
+  render();
 };
 
-function cell(mi,ci){
-  const m=MS[mi],ck=cS.checked[ci];
-  return`<div class="ci" onclick="tog(${ci})"
-    style="border:1.5px solid ${ck?'#ff3cac':'rgba(255,60,172,0.28)'};border-radius:11px;padding:8px 5px;display:flex;align-items:center;justify-content:center;text-align:center;cursor:pointer;min-height:90px;position:relative;overflow:hidden;transition:transform 0.15s,box-shadow 0.15s;background:${ck?'linear-gradient(135deg,rgba(255,60,172,0.28),rgba(123,47,255,0.36))':'rgba(26,21,51,0.85)'};box-shadow:${ck?'0 0 16px rgba(255,60,172,0.4)':'none'};">
-    <span style="position:absolute;top:4px;left:5px;font-family:'Bangers',cursive;font-size:10px;color:rgba(255,204,0,0.35);">#${ci+1}</span>
-    ${ck?`<span style="position:absolute;font-size:38px;color:#ffcc00;font-family:'Bangers',cursive;opacity:0.85;animation:ck 0.3s cubic-bezier(.3,1.5,.5,1) both;">✓</span>`:''}
-    <div style="font-weight:700;font-size:clamp(8px,1vw,11px);color:#f0e6ff;line-height:1.3;${ck?'opacity:0.45;text-decoration:line-through;':''}position:relative;z-index:1;">
-      ${es(m.t)}${m.b?`<br><span style="display:inline-block;font-size:7px;font-weight:900;text-transform:uppercase;color:#0f0c1d;background:#ffcc00;border-radius:3px;padding:1px 3px;margin-top:3px;">${es(m.b)}</span>`:''}
-    </div>
+function render() {
+  if (view === 'players')     renderPlayers();
+  if (view === 'leaderboard') renderLeaderboard();
+  if (view === 'bingo')       renderBingo();
+}
+
+/* ── Players list ── */
+function renderPlayers() {
+  const list = Object.entries(players)
+    .filter(([, p]) => p.name.toLowerCase().includes(searchQ.toLowerCase()));
+
+  let html = `<div class="top-bar">
+    <input class="search-input" type="text" placeholder="Rechercher un joueur..."
+           value="${esc(searchQ)}" oninput="onSearch(this.value)">
+    <button class="btn-add" onclick="openModal()">+ JOUEUR</button>
   </div>`;
-}
 
-function rB(){
-  if(!cP||!cS)return;
-  const cnt=cS.checked.filter(Boolean).length;
-  document.getElementById('mn').innerHTML=`
-    <div style="text-align:center;margin-bottom:16px;">
-      <button onclick="SV('players')" style="font-family:'Bangers',cursive;font-size:13px;letter-spacing:2px;background:transparent;border:1.5px solid rgba(255,60,172,0.3);color:#f0e6ff;border-radius:8px;padding:5px 13px;cursor:pointer;margin-bottom:12px;">← RETOUR</button>
-      <h1 style="font-family:'Bangers',cursive;font-size:clamp(34px,8vw,70px);color:#ffcc00;text-shadow:0 0 14px rgba(255,204,0,0.7),3px 3px 0 #ff3cac,5px 5px 0 #7b2fff;letter-spacing:4px;line-height:1;">${es(cP.n)}</h1>
-      <div style="font-weight:900;font-size:11px;color:#00f5d4;letter-spacing:6px;text-transform:uppercase;margin-top:4px;">✦ Bingo Torch'tot ✦</div>
-    </div>
-    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:5px;padding:12px;background:rgba(255,255,255,0.02);border-radius:18px;border:1.5px solid rgba(255,60,172,0.28);box-shadow:0 0 36px rgba(255,60,172,0.14);">
-      ${cP.order.map((mi,ci)=>cell(mi,ci)).join('')}
-    </div>
-    <div style="display:flex;align-items:center;gap:18px;justify-content:center;margin-top:16px;flex-wrap:wrap;">
-      <div style="font-family:'Bangers',cursive;font-size:25px;color:#00f5d4;letter-spacing:3px;text-shadow:0 0 10px rgba(0,245,212,0.4);">${cnt} / 25 missions</div>
-      <button onclick="rstB()" style="font-family:'Bangers',cursive;font-size:16px;letter-spacing:2px;color:#0f0c1d;background:#ff3cac;border:none;border-radius:8px;padding:7px 20px;cursor:pointer;box-shadow:0 4px 12px rgba(255,60,172,0.4);">🔄 RESET</button>
-    </div>
-  `;
-}
-
-window.tog=async function(ci){
-  if(!cP||!cS)return;
-  const oldC=cS.checked.filter(Boolean).length;
-  cS.checked[ci]=!cS.checked[ci];
-  const newC=cS.checked.filter(Boolean).length;
-  if(newC>oldC&&!cS.ms[newC])cS.ms[newC]=Date.now();
-  cP.c=newC;
-  const pi=Ps.findIndex(p=>p.id===cP.id);
-  if(pi!==-1)Ps[pi].c=newC;
-  await Promise.all([ss('bs_'+cP.id,cS),ss('bdp',Ps)]);
-  rB();
-  for(const l of LINES){if(l.every(i=>cS.checked[i])){const f=document.getElementById('bf');f.style.opacity='1';setTimeout(()=>{f.style.opacity='0';},2600);break;}}
-};
-
-window.rstB=async function(){
-  if(!cP)return;
-  cS={checked:new Array(25).fill(false),ms:{}};
-  cP.c=0;
-  const pi=Ps.findIndex(p=>p.id===cP.id);
-  if(pi!==-1)Ps[pi].c=0;
-  await Promise.all([ss('bs_'+cP.id,cS),ss('bdp',Ps)]);
-  rB();
-};
-
-async function rL(){
-  tabs('leaderboard');
-  document.getElementById('mn').innerHTML=`<div style="text-align:center;padding:40px;font-family:'Bangers',cursive;font-size:22px;color:#00f5d4;letter-spacing:3px;">Chargement...</div>`;
-  if(Ps.length===0){
-    document.getElementById('mn').innerHTML=`<div style="text-align:center;padding:60px;color:rgba(240,230,255,0.35);"><div style="font-family:'Bangers',cursive;font-size:52px;margin-bottom:12px;">🏆</div><div style="font-size:14px;">Aucun joueur encore !</div></div>`;
-    return;
+  if (list.length === 0) {
+    html += `<div class="empty">
+      <div class="empty-icon">${Object.keys(players).length===0?'👾':'🔍'}</div>
+      <p>${Object.keys(players).length===0
+        ? 'Aucun joueur encore — ajoute le premier !'
+        : 'Aucun résultat pour "'+esc(searchQ)+'"'}</p>
+    </div>`;
+  } else {
+    html += `<div class="players-grid">`;
+    list.forEach(([id, p]) => {
+      const cnt = (p.checked||[]).filter(Boolean).length;
+      const pct = Math.round((cnt/25)*100);
+      html += `<div class="player-card" onclick="openPlayer('${id}')">
+        <div class="avatar">${esc(initials(p.name))}</div>
+        <div class="player-name">${esc(p.name)}</div>
+        <div class="player-score">${cnt}/25</div>
+        <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
+      </div>`;
+    });
+    html += `</div>`;
   }
-  const sts=await Promise.all(Ps.map(p=>gs('bs_'+p.id)));
-  const rk=Ps.map((p,i)=>{
-    const s=sts[i]||{checked:new Array(25).fill(false),ms:{}};
-    const c=s.checked.filter(Boolean).length;
-    return{p,c,ts:s.ms[c]||p.createdAt};
-  }).sort((a,b)=>b.c!==a.c?b.c-a.c:a.ts-b.ts);
-  const M=['🥇','🥈','🥉'];
-  const BC=['rgba(255,204,0,0.55)','rgba(192,192,192,0.4)','rgba(205,127,50,0.4)'];
-  document.getElementById('mn').innerHTML=`
-    <div style="text-align:center;margin-bottom:26px;">
-      <h1 style="font-family:'Bangers',cursive;font-size:clamp(44px,10vw,78px);color:#ffcc00;text-shadow:0 0 18px rgba(255,204,0,0.7),4px 4px 0 #ff3cac;letter-spacing:6px;">CLASSEMENT</h1>
-      <div style="font-weight:900;font-size:11px;color:#00f5d4;letter-spacing:6px;text-transform:uppercase;margin-top:4px;">✦ Torch'tot Drakk's ✦</div>
+  document.getElementById('main').innerHTML = html;
+}
+
+/* ── Bingo ── */
+function renderBingo() {
+  const p = players[currentPlayerId];
+  if (!p) { showView('players'); return; }
+  const checked = p.checked || new Array(25).fill(false);
+  const order   = p.order   || shuffle([...Array(25).keys()]);
+  const cnt = checked.filter(Boolean).length;
+
+  let cells = '';
+  order.forEach((mi, ci) => {
+    const m   = MISSIONS[mi];
+    const done = checked[ci];
+    cells += `<div class="cell ${done?'done':''}" onclick="toggleCell(${ci})">
+      <span class="cell-num">#${ci+1}</span>
+      <div class="cell-text">${esc(m.t)}${m.b?`<br><span class="bonus-badge">${esc(m.b)}</span>`:''}</div>
+    </div>`;
+  });
+
+  document.getElementById('main').innerHTML = `
+    <div style="text-align:center;margin-bottom:6px;">
+      <button class="btn-back" onclick="showView('players')">← RETOUR</button>
     </div>
-    <div style="display:flex;flex-direction:column;gap:9px;">
-      ${rk.map((r,i)=>`<div onclick="oP('${r.p.id}')"
-        style="background:rgba(26,21,51,0.85);border:1.5px solid ${i<3?BC[i]:'rgba(255,60,172,0.18)'};border-radius:13px;padding:13px 16px;display:flex;align-items:center;gap:12px;cursor:pointer;transition:transform 0.15s;"
-        onmouseenter="this.style.transform='translateX(5px)'" onmouseleave="this.style.transform=''">
-        <div style="font-family:'Bangers',cursive;font-size:28px;min-width:42px;text-align:center;${i===0?'color:#ffcc00;text-shadow:0 0 10px rgba(255,204,0,0.6);':i===1?'color:#C0C0C0;':i===2?'color:#CD7F32;':'color:rgba(240,230,255,0.3);'}">${i<3?M[i]:'#'+(i+1)}</div>
-        <div style="flex:1;">
-          <div style="font-weight:900;font-size:15px;color:#f0e6ff;">${es(r.p.n)}</div>
-          <div style="font-size:11px;color:rgba(240,230,255,0.42);margin-top:2px;">${r.c} mission${r.c!==1?'s':''} réalisée${r.c!==1?'s':''}</div>
-        </div>
-        <div style="text-align:right;min-width:60px;">
-          <div style="font-family:'Bangers',cursive;font-size:24px;color:#00f5d4;letter-spacing:2px;">${r.c}/25</div>
-          <div style="height:4px;background:rgba(255,255,255,0.1);border-radius:2px;overflow:hidden;margin-top:4px;">
-            <div style="height:100%;width:${Math.round((r.c/25)*100)}%;background:linear-gradient(90deg,#ff3cac,#7b2fff);border-radius:2px;"></div>
+    <div class="page-title">
+      <h1>${esc(p.name)}</h1>
+      <div class="page-subtitle">✦ Torch'tot Drakk's Edition ✦</div>
+    </div>
+    <div class="bingo-grid">${cells}</div>
+    <div class="bottom-bar">
+      <div class="counter">${cnt} / 25 missions</div>
+      <button class="btn-reset"  onclick="resetBingo()">🔄 RESET</button>
+      <button class="btn-delete" onclick="deletePlayer()">🗑️ SUPPRIMER</button>
+    </div>`;
+}
+
+/* ── Leaderboard ── */
+function renderLeaderboard() {
+  const rows = Object.entries(players).map(([id, p]) => {
+    const cnt = (p.checked||[]).filter(Boolean).length;
+    const ms  = p.milestones || {};
+    return { id, p, cnt, ts: ms[cnt] || p.createdAt || 0 };
+  }).sort((a, b) => b.cnt !== a.cnt ? b.cnt - a.cnt : a.ts - b.ts);
+
+  const MEDALS = ['🥇','🥈','🥉'];
+  const COLORS = [
+    'rgba(255,204,0,.55)','rgba(192,192,192,.4)','rgba(205,127,50,.4)'
+  ];
+
+  let html = `<div class="page-title" style="margin-bottom:20px;">
+    <h1 style="font-size:clamp(42px,9vw,80px);">CLASSEMENT</h1>
+    <div class="page-subtitle">✦ Torch'tot Drakk's ✦</div>
+  </div>`;
+
+  if (rows.length === 0) {
+    html += `<div class="empty"><div class="empty-icon">🏆</div><p>Aucun joueur encore !</p></div>`;
+  } else {
+    html += `<div style="display:flex;flex-direction:column;gap:9px;">`;
+    rows.forEach((r, i) => {
+      const pct  = Math.round((r.cnt/25)*100);
+      const rank = i < 3 ? MEDALS[i] : `#${i+1}`;
+      const rankColor = i===0?'color:#ffcc00':i===1?'color:#C0C0C0':i===2?'color:#CD7F32':'color:rgba(240,230,255,.3)';
+      html += `<div class="lb-row" style="border-color:${i<3?COLORS[i]:'var(--border)'};" onclick="openPlayer('${r.id}')">
+        <div class="lb-rank" style="${rankColor}">${rank}</div>
+        <div class="lb-info">
+          <div class="lb-name">${esc(r.p.name)}</div>
+          <div class="lb-sub">${r.cnt} mission${r.cnt!==1?'s':''} réalisée${r.cnt!==1?'s':''}</div>
+          <div style="height:3px;background:rgba(255,255,255,.1);border-radius:2px;overflow:hidden;margin-top:6px;">
+            <div style="height:100%;width:${pct}%;background:linear-gradient(90deg,#ff3cac,#7b2fff);border-radius:2px;"></div>
           </div>
         </div>
-      </div>`).join('')}
-    </div>
-  `;
+        <div class="lb-score">${r.cnt}/25</div>
+      </div>`;
+    });
+    html += `</div>`;
+  }
+
+  document.getElementById('main').innerHTML = html;
 }
 
-document.getElementById('pni').addEventListener('keydown',e=>{if(e.key==='Enter')aP();});
-setInterval(async()=>{if(vw==='players'||vw==='leaderboard'){Ps=(await gs('bdp'))||[];if(vw==='players')rP();else await rL();}},15000);
-init();
+/* ════════════════════════════════════════════════════
+   ACTIONS
+   ════════════════════════════════════════════════════ */
+window.onSearch = function(v) { searchQ = v; renderPlayers(); };
+
+window.openModal  = function() { document.getElementById('modal').classList.add('open');
+                                  setTimeout(()=>document.getElementById('new-player-firstname').focus(),50); };
+window.closeModal = function() { document.getElementById('modal').classList.remove('open');
+                                  document.getElementById('new-player-firstname').value = '';
+                                  document.getElementById('new-player-lastname').value = ''; };
+
+window.addPlayer = async function() {
+  const firstname = document.getElementById('new-player-firstname').value.trim();
+  const lastname  = document.getElementById('new-player-lastname').value.trim();
+  const name = [firstname, lastname].filter(Boolean).join(' ');
+  if (!name) return;
+  const id = 'p' + Date.now();
+  const data = {
+    name,
+    createdAt: Date.now(),
+    order: shuffle([...Array(25).keys()]),
+    checked: new Array(25).fill(false),
+    milestones: {}
+  };
+  await savePlayer(id, data);
+  closeModal();
+  toast(`${name} ajouté·e !`);
+};
+
+window.openPlayer = function(id) {
+  currentPlayerId = id;
+  view = 'bingo';
+  ['players','leaderboard'].forEach(t => document.getElementById('btn-'+t).classList.remove('active'));
+  renderBingo();
+};
+
+window.toggleCell = async function(ci) {
+  const p = players[currentPlayerId];
+  if (!p) return;
+  const checked    = [...(p.checked || new Array(25).fill(false))];
+  const milestones = { ...(p.milestones || {}) };
+  const oldCnt     = checked.filter(Boolean).length;
+
+  checked[ci] = !checked[ci];
+  const newCnt = checked.filter(Boolean).length;
+
+  if (newCnt > oldCnt && !milestones[newCnt]) {
+    milestones[newCnt] = Date.now();
+  }
+
+  const updated = { ...p, checked, milestones };
+  players[currentPlayerId] = updated;
+  renderBingo();
+
+  await savePlayer(currentPlayerId, updated);
+};
+
+window.resetBingo = async function() {
+  if (!currentPlayerId) return;
+  if (!confirm('Remettre à zéro le bingo de ce joueur ?')) return;
+  const p = players[currentPlayerId];
+  const updated = { ...p, checked: new Array(25).fill(false), milestones: {} };
+  players[currentPlayerId] = updated;
+  renderBingo();
+  await savePlayer(currentPlayerId, updated);
+  toast('Bingo réinitialisé !');
+};
+
+window.deletePlayer = async function() {
+  const p = players[currentPlayerId];
+  if (!p) return;
+  if (!confirm(`Supprimer ${p.name} définitivement ?`)) return;
+  await window._remove(window._ref(window._db, `players/${currentPlayerId}`));
+  toast(`${p.name} supprimé·e`);
+  showView('players');
+};
+
+/* ── Keyboard shortcut ── */
+['new-player-firstname','new-player-lastname'].forEach(id => {
+  document.getElementById(id).addEventListener('keydown', e => {
+    if (e.key === 'Enter') addPlayer();
+    if (e.key === 'Escape') closeModal();
+  });
+});
+
+/* ════════════════════════════════════════════════════
+   BOOT
+   ════════════════════════════════════════════════════ */
+waitDb(() => {
+  // Check if config is still placeholder
+  if (window._dbReady && window._db) {
+    try {
+      const testRef = window._ref(window._db, '.info/connected');
+      window._onValue(testRef, snap => {
+        document.getElementById('sync-dot').classList.toggle('off', !snap.val());
+      });
+      listenPlayers();
+    } catch(e) {
+      document.getElementById('cfg-screen').classList.add('show');
+    }
+  }
+});
+
+// Show config screen if Firebase wasn't even loaded (apiKey still placeholder)
+setTimeout(() => {
+  if (!window._dbReady) {
+    document.getElementById('cfg-screen').classList.add('show');
+  } else {
+    renderPlayers();
+  }
+}, 1200);
 </script>
+</body>
+</html>
